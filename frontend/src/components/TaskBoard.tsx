@@ -5,10 +5,20 @@ import TaskInput from './TaskInput';
 import TaskCard from './TaskCard';
 import { useTasks } from '../hooks/useTasks'; // ⚡ Import your new hook
 
-export default function TaskBoard({ workspaceId, workspaceTitle }: any) {
+export default function TaskBoard({ workspaceId, workspaceTitle,searchQuery}: any) {
   
   // ⚡ Call the hook! It does all the heavy lifting behind the scenes.
   const { tasks, activeTasks, completedTasks, fetchTasks } = useTasks(workspaceId);
+
+  const safeQuery = (searchQuery || '').toLowerCase();
+
+  const filteredActive = activeTasks.filter((t: any) => 
+    t.content.toLowerCase().includes(safeQuery)
+  );
+  
+  const filteredCompleted = completedTasks.filter((t: any) => 
+    t.content.toLowerCase().includes(safeQuery)
+  );
 
   // --- DRAG AND DROP INTERACTION ---
   const handleDragOver = (e: any) => {
@@ -36,18 +46,20 @@ export default function TaskBoard({ workspaceId, workspaceTitle }: any) {
       <section className="column" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, false)}>
         <div className="column-header">
           <h2>Active Missions</h2>
-          <span className="count-badge">{activeTasks.length}</span>
+          <span className="count-badge">{filteredActive.length}</span>
         </div>
         
         <TaskInput workspaceId={workspaceId} onTaskAdded={fetchTasks} />
 
         <ul className="task-list">
-          {activeTasks.length > 0 ? (
-            activeTasks.map(task => (
+          {filteredActive.length > 0 ? (
+            filteredActive.map((task: any) => (
               <TaskCard key={task.id} task={task} workspaceId={workspaceId} onTaskChange={fetchTasks} />
             ))
           ) : (
-            <div style={{ color: '#aaa', fontSize: '0.9rem', padding: '10px', textAlign: 'center' }}>No active missions.</div>
+            <div style={{ color: '#aaa', fontSize: '0.9rem', padding: '10px', textAlign: 'center' }}>
+              {searchQuery ? "No matching missions found." : "No active missions."}
+            </div>
           )}
         </ul>
       </section>
@@ -56,16 +68,19 @@ export default function TaskBoard({ workspaceId, workspaceTitle }: any) {
       <section className="column" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, true)}>
         <div className="column-header">
           <h2>Completed</h2>
-          <span className="count-badge">{completedTasks.length}</span>
+          <span className="count-badge">{filteredCompleted.length}</span>
         </div>
         
         <ul className="task-list completed-zone" style={{ minHeight: '200px' }}>
-          {completedTasks.length > 0 ? (
-            completedTasks.map(task => (
+          {/* ⚡ Map over the FILTERED array instead of the raw array */}
+          {filteredCompleted.length > 0 ? (
+            filteredCompleted.map((task: any) => (
               <TaskCard key={task.id} task={task} workspaceId={workspaceId} onTaskChange={fetchTasks} />
             ))
           ) : (
-            <div style={{ color: '#aaa', fontSize: '0.9rem', padding: '10px', textAlign: 'center' }}>Empty archives.</div>
+            <div style={{ color: '#aaa', fontSize: '0.9rem', padding: '10px', textAlign: 'center' }}>
+              {searchQuery ? "No matching archives found." : "Empty archives."}
+            </div>
           )}
         </ul>
       </section>

@@ -2,8 +2,8 @@ const jwt = require('jsonwebtoken');
 const User = require('../model/User');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/AppError');
+const passport = require('passport'); 
 
-// Secret should normally be in a .env file!
 const JWT_SECRET = 'agency-os-super-secret-key-2026-secure'; 
 
 const signToken = (id) => {
@@ -11,26 +11,26 @@ const signToken = (id) => {
 };
 
 exports.signup = catchAsync(async (req, res, next) => {
+    // Keep your signup exactly as it is!
     const newUser = await User.create({
         username: req.body.username,
         password: req.body.password
     });
-
     const token = signToken(newUser._id);
-
     res.status(201).json({ status: 'success', token, data: { user: newUser } });
 });
 
-exports.login = catchAsync(async (req, res, next) => {
-    const { username, password } = req.body;
+exports.login = (req, res, next) => {
+    // We tell Passport to use the 'local' strategy we built, without sessions
+    passport.authenticate('local', { session: false }, (err, user, info) => {
+        if (err) return next(err);
+        
+        // If login failed, Passport provides the error message we defined
+        if (!user) return next(new AppError(info.message, 401));
 
-    if (!username || !password) return next(new AppError('Please provide username and password', 400));
-
-    const user = await User.findOne({ username });
-    if (!user || !(await user.correctPassword(password, user.password))) {
-        return next(new AppError('Incorrect username or password', 401));
-    }
-
-    const token = signToken(user._id);
-    res.status(200).json({ status: 'success', token, data: { user } });
-});
+        // If successful, generate the JWT token and send it to React
+        const token = signToken(user._id);
+        res.status(200).json({ status: 'success', token, data: { user } });
+        
+    })(req, res, next);
+};

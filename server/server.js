@@ -15,7 +15,8 @@ const { protect } = require('./middleware/authMiddleware');
 const globalErrorHandler = require('./middleware/errorMiddleware');
 const taskRoutes = require('./routes/taskRoute');
 const workspaceRoutes = require('./routes/workspaceRoutes');
-
+const passport = require('passport');
+require('./config/passport');
 connectDB(); 
 
 const app = express();
@@ -26,6 +27,7 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
+app.use(passport.initialize());
 
 app.use('/api/archives', protect, archiveRoutes);
 // Auth Routes

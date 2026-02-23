@@ -17,6 +17,7 @@ import WorkspaceModal from './components/WorkspaceModal';
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(AuthService.isAuthenticated());
   const [userName, setUserName] = useState(localStorage.getItem('agency_user') || 'User');
+  const [searchQuery, setSearchQuery] = useState('');
   // --- GLOBAL STATE ---
   // 1. Wait for DB to load before showing the UI
 
@@ -103,14 +104,19 @@ function App() {
       />
 
       <main className="dashboard">
-        <Header username={userName} />
-        
-        {/* We pass the active workspace ID down so the board knows what tasks to load */}
-        <TaskBoard workspaceId={currentWorkspace.id} workspaceTitle={currentWorkspace.title} />
-        
-        <Footer workspaceId={currentWorkspace.id}
-        onLogout={() => setIsAuthenticated(false)}
+        <Header 
+          username={userName} 
+          searchQuery={searchQuery} 
+          setSearchQuery={setSearchQuery} 
         />
+        
+        <TaskBoard 
+          workspaceId={currentWorkspace.id} 
+          workspaceTitle={currentWorkspace.title} 
+          searchQuery={searchQuery} 
+        />
+        
+        <Footer workspaceId={currentWorkspace.id} onLogout={() => setIsAuthenticated(false)} />
       </main>
 
       {/* Conditionally render the modal */}

@@ -13,11 +13,26 @@ import Header from './components/Header';
 import TaskBoard from './components/TaskBoard';
 import Footer from './components/Footer';
 import WorkspaceModal from './components/WorkspaceModal';
+import AdminDashboard from './components/AdminDashboard';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(AuthService.isAuthenticated());
   const [userName, setUserName] = useState(localStorage.getItem('agency_user') || 'User');
   const [searchQuery, setSearchQuery] = useState('');
+  const [user, setUser] = useState<any>(() => {
+    try {
+      const stored = localStorage.getItem('agency_user_obj');
+      // Check if data is missing OR if it's the corrupted string "undefined"
+      if (!stored || stored === 'undefined' || stored === 'null') {
+        return {}; 
+      }
+      return JSON.parse(stored);
+    } catch (e) {
+      console.warn("Corrupt user data found in storage. Resetting.");
+      localStorage.removeItem('agency_user_obj'); // Auto-clean the bad data
+      return {};
+    }
+  });
   // --- GLOBAL STATE ---
   // 1. Wait for DB to load before showing the UI
 
@@ -75,9 +90,35 @@ function App() {
   }, [isAuthenticated]);
 
   if (!isAuthenticated) {
-      return <Auth onLogin={() => {
+      return <Auth onLogin={(apiResponseUser: any) => {
+          // 1. First, save to storage (This is the Source of Truth)
+          localStorage.setItem('agency_user_obj', JSON.stringify(apiResponseUser));
+          localStorage.setItem('agency_user', apiResponseUser.username);
+          
+          // This ensures 'user' state is IDENTICAL to what happens on refresh.
+          const freshUser = JSON.parse(localStorage.getItem('agency_user_obj') || '{}');
+          
+          // 3. Update State
+          setUser(freshUser); 
+          setUserName(freshUser.username);
           setIsAuthenticated(true);
-          setUserName(localStorage.getItem('agency_user') || 'User'); 
+      }} />;
+  }
+
+  if (isAuthenticated && !user?.role) {
+      return (
+        <div className="flex items-center justify-center h-screen bg-[#111] text-gray-400">
+            {/* If this spins forever, it means local storage is missing the 'role' field! */}
+            Verifying Access...
+        </div>
+      );
+  }
+
+  if (user?.role === 'superadmin') {
+      return <AdminDashboard onLogout={() => {
+          AuthService.logout();
+          setIsAuthenticated(false);
+          setUser({});
       }} />;
   }
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 // @ts-ignore
 import { TaskService } from '../services/taskService.js';
-
+import { FiInfo, FiEdit2, FiCheck, FiTrash2, FiRotateCw, FiAlertCircle } from 'react-icons/fi';
 export default function TaskCard({ task, workspaceId, onTaskChange }: any) {
   // ⚡ NEW: State to control our slick new UI features
   const [isEditing, setIsEditing] = useState(false);
@@ -109,16 +109,23 @@ export default function TaskCard({ task, workspaceId, onTaskChange }: any) {
         )}
       </div>
       
-      <div className="task-actions">
-        {/* Updated buttons to trigger State instead of Alerts */}
-        <button className="action-btn info-btn" title="Details" onClick={() => { setShowInfo(!showInfo); setIsEditing(false); }}>ℹ️</button>
-        <button className="action-btn edit-btn" title="Edit" onClick={() => { setIsEditing(!isEditing); setShowInfo(false); }}>✏️</button>
+      <div className="task-actions" style={{ display: 'flex', gap: '8px' }}>
+        <button className="action-btn info-btn" title="Details" onClick={() => { setShowInfo(!showInfo); setIsEditing(false); }}>
+            <FiInfo size={14} />
+        </button>
+        <button className="action-btn edit-btn" title="Edit" onClick={() => { setIsEditing(!isEditing); setShowInfo(false); }}>
+            <FiEdit2 size={14} />
+        </button>
         
         {!task.completed && (
-          <button className="action-btn complete-btn" title="Complete" onClick={handleComplete}>✅</button>
+          <button className="action-btn complete-btn" title="Complete" onClick={handleComplete}>
+            <FiCheck size={16} />
+          </button>
         )}
         
-        <button className="action-btn delete-btn" title="Delete" onClick={handleDelete}>🗑️</button>
+        <button className="action-btn delete-btn" title="Delete" onClick={handleDelete}>
+            <FiTrash2 size={14} />
+        </button>
       </div>
     </li>
   );

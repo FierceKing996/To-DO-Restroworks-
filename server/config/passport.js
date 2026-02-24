@@ -38,13 +38,15 @@ const jwtOptions = {
 
 passport.use(new JwtStrategy(jwtOptions, async (jwt_payload, done) => {
     try {
-        // Find the user based on the ID inside the decoded token
         const user = await User.findById(jwt_payload.id);
         
         if (user) {
-            // ⚡ CRITICAL: We format this exactly how your controllers expect it!
-            // Your existing code uses req.user.userId, so we return exactly that.
-            return done(null, { userId: user._id }); 
+            // ⚡ THE FIX: Return the full user so 'req.user.role' exists!
+            // We also attach .userId so your existing Task/Workspace controllers don't break.
+            const userObj = user.toObject(); // Convert Mongoose doc to plain object
+            userObj.userId = user._id;       // Alias _id to userId
+            
+            return done(null, userObj);
         }
         
         return done(null, false);

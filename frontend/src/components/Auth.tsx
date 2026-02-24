@@ -21,9 +21,11 @@ export default function Auth({ onLogin }: any) {
         }
         try {
             if (isLogin) {
-                await AuthService.login(username, password);
+                const userObj = await AuthService.login(username, password);
+                onLogin(userObj);
             } else {
-                await AuthService.signup(username, password);
+                const userObj = await AuthService.signup(username, password);
+                onLogin(userObj);
             }
             onLogin(); // Tell App.tsx we are logged in
         } catch (err: any) {

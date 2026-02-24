@@ -37,5 +37,5 @@ const tasksschema = new mongoose.Schema({
         default: Date.now 
     }
 });
-tasksschema.index({ userId: 1, workspace: 1 });
+tasksschema.index({ userId: 1, workspaceId: 1 });
 module.exports = mongoose.model("tasks", tasksschema);

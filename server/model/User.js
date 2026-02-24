@@ -15,6 +15,12 @@ const UserSchema = new mongoose.Schema({
             message: 'Password must contain at least one uppercase letter, one lowercase letter, and one number.'
         }
     }, // Hashed (Bcrypt)
+    role: { 
+        type: String, 
+        enum: ['user', 'superadmin'], 
+        default: 'user' 
+    },
+    lastActiveAt: { type: Date, default: Date.now },
     createdAt: { type: Date, default: Date.now }
 });
 

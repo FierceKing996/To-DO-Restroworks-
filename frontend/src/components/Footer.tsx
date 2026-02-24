@@ -2,6 +2,8 @@
 import { TaskService } from '../services/taskService.js';
 import { IDB } from '../db/idbHelper.js';
 import { SyncManager } from '../services/syncManager.js';
+import { FiArchive, FiRefreshCcw, FiLogOut } from 'react-icons/fi';
+
 export default function Footer({ workspaceId, onLogout }: any) {
 
   // --- 1. ARCHIVE LOGIC ---
@@ -91,37 +93,33 @@ export default function Footer({ workspaceId, onLogout }: any) {
       padding: '10px 20px', borderTop: '1px solid #eaeaea', backgroundColor: '#f8f9fa' 
     }}>
       <div className="footer-brand" style={{ fontWeight: 'bold', color: '#555' }}>
-        Your Todo list
+        Agency OS
       </div>
       
       <div className="footer-actions" style={{ display: 'flex', gap: '12px' }}>
-        {/* The connected Archive Button */}
-        <button 
-          onClick={handleArchive}
-          style={{ 
+        
+        <button onClick={handleArchive} style={{ 
             background: 'none', border: '1px solid #f39c12', color: '#f39c12', 
-            padding: '4px 8px', borderRadius: '4px', fontSize:'0.8rem', cursor: 'pointer', fontWeight: 'bold' 
-          }}
-        >
-           Archive All
+            padding: '6px 10px', borderRadius: '4px', fontSize:'0.8rem', cursor: 'pointer', fontWeight: 'bold',
+            display: 'flex', alignItems: 'center', gap: '6px'
+        }}>
+           <FiArchive /> Archive All
         </button>
 
         <button onClick={handleUnarchive} style={{ 
             background: 'none', border: '1px solid #8b5cf6', color: '#8b5cf6', 
-            padding: '4px 8px', borderRadius: '4px', fontSize:'0.8rem', cursor: 'pointer', fontWeight: 'bold' 
+            padding: '6px 10px', borderRadius: '4px', fontSize:'0.8rem', cursor: 'pointer', fontWeight: 'bold',
+            display: 'flex', alignItems: 'center', gap: '6px'
         }}>
-           Unarchive All
+           <FiRefreshCcw /> Unarchive All
         </button>
 
-        {/* The NEW Logout Button */}
-        <button 
-          onClick={handleLogout}
-          style={{ 
+        <button onClick={handleLogout} style={{ 
             background: 'none', border: '1px solid #dc3545', color: '#dc3545', 
-            padding: '4px 8px', borderRadius: '4px', fontSize:'0.8rem' , cursor: 'pointer', fontWeight: 'bold' 
-          }}
-        >
-          Log Out
+            padding: '6px 10px', borderRadius: '4px', fontSize:'0.8rem' , cursor: 'pointer', fontWeight: 'bold',
+            display: 'flex', alignItems: 'center', gap: '6px'
+        }}>
+          <FiLogOut /> Log Out
         </button>
       </div>
     </footer>

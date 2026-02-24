@@ -1,5 +1,6 @@
 import { useWorkspaces } from '../hooks/useWorkspaces';
 import { useEffect } from 'react';
+import { FiMenu, FiFolder, FiPlus, FiWifi, FiWifiOff } from 'react-icons/fi';
 export default function Sidebar({ 
   isCollapsed, 
   toggleSidebar, 
@@ -23,7 +24,12 @@ export default function Sidebar({
   return (
     <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-top">
-        <button onClick={toggleSidebar} className="icon-btn" style={{ fontSize: '1.2rem', background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>☰</button>
+        <button onClick={toggleSidebar} className="icon-btn" style={{ 
+            background: 'none', border: 'none', color: '#fff', cursor: 'pointer',
+            display: 'flex', justifyContent: 'center', alignItems: 'center' 
+        }}>
+            <FiMenu size={24} />
+        </button>
       </div>
       
       <nav className="sidebar-nav">
@@ -41,7 +47,7 @@ export default function Sidebar({
                 backgroundColor: ws.id === currentWorkspaceId ? 'rgba(255,255,255,0.1)' : 'transparent'
               }}
             >
-              <span className="nav-icon">📁</span>
+              <span className="nav-icon" style={{ display: 'flex' }}><FiFolder size={18} /></span>
               {!isCollapsed && <span className="nav-text">{ws.title}</span>}
             </li>
           ))}
@@ -76,7 +82,9 @@ export default function Sidebar({
           onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#343542'}
           onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#2a2b36'}
         >
-          <span style={{ fontSize: '1.2rem', opacity: 0.8 }}>+</span>
+          <span style={{ display: 'flex', opacity: 0.8 }}>
+            <FiPlus size={20} />
+          </span>
           {!isCollapsed && <span>Create Workspace</span>}
         </button>
 
@@ -86,10 +94,10 @@ export default function Sidebar({
           title="System Status"
           style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#aaa', fontSize: '0.8rem' }}
         >
-          <span id="connection-status" className="dot" style={{ 
-            display: 'inline-block', width: '10px', height: '10px', 
-            borderRadius: '50%', backgroundColor: navigator.onLine ? '#10b981' : '#ef4444' 
-          }}></span>
+          {navigator.onLine ? 
+            <FiWifi size={16} color="#10b981" /> : 
+            <FiWifiOff size={16} color="#ef4444" />
+          }
           {!isCollapsed && <span>{navigator.onLine ? 'System Online' : 'Offline Mode'}</span>}
         </div>
 

@@ -85,7 +85,9 @@ export const SyncManager = {
         } catch (err) {
             console.warn(` Sync Error (${this.retryDelay}ms backoff):`, err);
             // Wait and try again if the server is still unreachable
-            setTimeout(() => this.processQueue(), this.retryDelay);
+            const jitter = Math.floor(Math.random() * (this.retryDelay * 0.2)); 
+            const finalDelay = this.retryDelay + jitter;
+            setTimeout(() => this.processQueue(), this.finalDelay);
             this.retryDelay = Math.min(this.retryDelay * 2, this.maxDelay);
         } finally {
             this.isSyncing = false;

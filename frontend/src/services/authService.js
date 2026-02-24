@@ -19,6 +19,7 @@ export const AuthService = {
 
             localStorage.setItem('agency_token', data.token);
             localStorage.setItem('agency_user', data.data.user.username);
+            localStorage.setItem('agency_user_obj', JSON.stringify(data.data.user));
             return data.data.user;
         }
         throw new Error(data.message || 'Login failed');
@@ -40,6 +41,7 @@ export const AuthService = {
 
             localStorage.setItem('agency_token', data.token);
             localStorage.setItem('agency_user', data.data.user.username);
+            localStorage.setItem('agency_user_obj', JSON.stringify(data.data.user));
             return data.data.user;
         }
         throw new Error(data.message || 'Signup failed');
@@ -48,6 +50,7 @@ export const AuthService = {
     logout() {
         localStorage.removeItem('agency_token');
         localStorage.removeItem('agency_user');
+        localStorage.removeItem('agency_user_obj');
     },
 
     getToken() {
@@ -56,5 +59,22 @@ export const AuthService = {
 
     isAuthenticated() {
         return !!this.getToken();
+    },
+    getUser() {
+        const userStr = localStorage.getItem('agency_user_obj');
+        
+        // 1. Guard against bad values explicitly
+        if (!userStr || userStr === 'undefined' || userStr === 'null') {
+            return null;
+        }
+
+        // 2. Try/Catch to prevent crashes if JSON is broken
+        try {
+            return JSON.parse(userStr);
+        } catch (e) {
+            console.warn("Corrupt user data found. Clearing.");
+            localStorage.removeItem('agency_user_obj');
+            return null;
+        }
     }
 };

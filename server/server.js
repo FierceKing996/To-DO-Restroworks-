@@ -16,6 +16,7 @@ const globalErrorHandler = require('./middleware/errorMiddleware');
 const taskRoutes = require('./routes/taskRoute');
 const workspaceRoutes = require('./routes/workspaceRoutes');
 const passport = require('passport');
+const adminRoutes = require('./routes/adminRoutes');
 require('./config/passport');
 connectDB(); 
 
@@ -30,6 +31,7 @@ app.use(express.json());
 app.use(passport.initialize());
 
 app.use('/api/archives', protect, archiveRoutes);
+app.use('/api/admin', adminRoutes);
 // Auth Routes
 app.post('/api/auth/signup', authController.signup);
 app.post('/api/auth/login', authController.login);

@@ -92,12 +92,12 @@ function App() {
   if (!isAuthenticated) {
       return <Auth onLogin={(apiResponseUser: any) => {
           // 1. First, save to storage (This is the Source of Truth)
-          localStorage.setItem('agency_user_obj', JSON.stringify(apiResponseUser));
-          localStorage.setItem('agency_user', apiResponseUser.username);
+          //localStorage.setItem('agency_user_obj', JSON.stringify(apiResponseUser));
+          //localStorage.setItem('agency_user', apiResponseUser.username);
           
           // This ensures 'user' state is IDENTICAL to what happens on refresh.
-          const freshUser = JSON.parse(localStorage.getItem('agency_user_obj') || '{}');
-          
+          //const freshUser = JSON.parse(localStorage.getItem('agency_user_obj') || '{}');
+          const freshUser = AuthService.getUser();
           // 3. Update State
           setUser(freshUser); 
           setUserName(freshUser.username);

@@ -16,11 +16,13 @@ export const AuthService = {
             await IDB.clear('workspaces');
             await IDB.clear('tasks');
             await IDB.clear('syncQueue');
-
-            localStorage.setItem('agency_token', data.token);
-            localStorage.setItem('agency_user', data.data.user.username);
-            localStorage.setItem('agency_user_obj', JSON.stringify(data.data.user));
-            return data.data.user;
+            const userObj = data.data?.user || data.user;
+            const token = data.token;
+            debugger;
+            localStorage.setItem('agency_token', token);
+            localStorage.setItem('agency_user', userObj.username); 
+            localStorage.setItem('agency_user_obj', JSON.stringify(userObj));
+            return userObj;
         }
         throw new Error(data.message || 'Login failed');
     },
@@ -38,11 +40,15 @@ export const AuthService = {
             await IDB.clear('workspaces');
             await IDB.clear('tasks');
             await IDB.clear('syncQueue');
+            const userObj = data.data?.user || data.user; 
+            console.log(JSON.stringify(userObj));
+            const token = data.token;
 
-            localStorage.setItem('agency_token', data.token);
-            localStorage.setItem('agency_user', data.data.user.username);
-            localStorage.setItem('agency_user_obj', JSON.stringify(data.data.user));
-            return data.data.user;
+            localStorage.setItem('agency_token', token);
+            localStorage.setItem('agency_user', userObj.username);
+            localStorage.setItem('agency_user_obj', JSON.stringify(userObj)); 
+            
+            return userObj;
         }
         throw new Error(data.message || 'Signup failed');
     },

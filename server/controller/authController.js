@@ -21,14 +21,14 @@ exports.signup = catchAsync(async (req, res, next) => {
 });
 
 exports.login = (req, res, next) => {
-    // We tell Passport to use the 'local' strategy we built, without sessions
     passport.authenticate('local', { session: false }, (err, user, info) => {
         if (err) return next(err);
         
-        // If login failed, Passport provides the error message we defined
-        if (!user) return next(new AppError(info.message, 401));
+        // Guard against missing 'info' object
+        if (!user) {
+            return next(new AppError(info ? info.message : 'Login failed', 401));
+        }
 
-        // If successful, generate the JWT token and send it to React
         const token = signToken(user._id);
         res.status(200).json({ status: 'success', token, data: { user } });
         

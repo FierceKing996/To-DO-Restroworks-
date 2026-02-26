@@ -1,34 +1,33 @@
 const Task = require('../model/tasks');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/AppError');
-
+const mongoose = require('mongoose');
 exports.getTasks = catchAsync(async (req, res, next) => {
-    const { workspaceId } = req.query; 
-    const userId = req.user.userId;
-
-    const query = { userId, isDeleted: false };
-    if (workspaceId) query.workspaceId = workspaceId;
-
-    const tasks = await Task.find(query).sort({ updatedAt: -1 });
+    // Return all tasks (we filter by project on frontend for now)
+    const tasks = await Task.find({ isDeleted: false });
     res.status(200).json({ status: 'success', results: tasks.length, data: { tasks } });
 });
 
 exports.createTask = catchAsync(async (req, res, next) => {
+    // 1. Log the body to verify data is coming in
+    console.log("Creating Task Payload:", req.body);
 
-    const { clientId, content, type, workspaceId, createdAt } = req.body;
-    const userId = req.user.userId;
+    const { content, clientId, priority, sectionId, projectId, workspaceId } = req.body;
 
-    if (!workspaceId) {
-        return next(new AppError('Task must belong to a workspace (workspaceId missing)', 400));
+    // 2. Validate essential fields
+    if (!content || !workspaceId || !projectId) {
+        return next(new AppError('Missing required fields (content, workspaceId, projectId)', 400));
     }
 
     const newTask = await Task.create({
-        userId,
-        clientId,
         content,
-        type,
+        clientId, 
+        priority: priority || 'Medium',
+        sectionId: sectionId || 'todo',
+        projectId, 
         workspaceId,
-        createdAt
+        userId: req.user ? req.user._id : null,
+        isDeleted: false // Explicitly set false
     });
 
     res.status(201).json({ status: 'success', data: { task: newTask } });
@@ -36,71 +35,86 @@ exports.createTask = catchAsync(async (req, res, next) => {
 
 exports.updateTask = catchAsync(async (req, res, next) => {
     const { clientId } = req.params;
-    const updates = req.body;
-    updates.updatedAt = new Date();
+    
+    // ⚡ FIX: Search by clientId string OR _id (if valid)
+    // This prevents the "Cast to ObjectId failed" crash
+    const query = { 
+        $or: [
+            { clientId: clientId },
+            ...(mongoose.isValidObjectId(clientId) ? [{ _id: clientId }] : [])
+        ] 
+    };
 
-    const task = await Task.findOneAndUpdate(
-        { clientId, userId: req.user.userId }, 
-        updates, 
-        { new: true, runValidators: true }
-    );
+    const task = await Task.findOne(query);
 
     if (!task) {
         return next(new AppError('No task found with that ID', 404));
     }
+
+    // Update fields
+    Object.assign(task, req.body);
+    await task.save();
 
     res.status(200).json({ status: 'success', data: { task } });
 });
 
 exports.deleteTask = catchAsync(async (req, res, next) => {
+    const { clientId } = req.params;
+    
+    // ⚡ FIX: Gracefully handle if a temp ID somehow reaches here
+    if (clientId.startsWith('temp-')) {
+        return res.status(200).json({ status: 'success', message: 'Ignored temp ID' });
+    }
+
+    // Try finding by clientId (string) OR _id (ObjectId)
+    // We use findOneAndUpdate to avoid casting errors if clientId is just a random string
     const task = await Task.findOneAndUpdate(
-        { clientId: req.params.clientId, userId: req.user.userId },
-        { isDeleted: true, updatedAt: new Date() },
+        { 
+            $or: [
+                { clientId: clientId }, 
+                // Only search by _id if it looks like a valid ObjectId (24 hex chars)
+                ...(mongoose.isValidObjectId(clientId) ? [{ _id: clientId }] : [])
+            ] 
+        },
+        { isDeleted: true },
         { new: true }
     );
 
     if (!task) {
-        return next(new AppError('No task found with that ID', 404));
+        return next(new AppError('No task found to delete', 404));
     }
 
-    res.status(200).json({ status: 'success', message: 'Task deleted successfully' });
+    res.status(204).json({ status: 'success', data: null });
 });
 
+exports.moveTask = catchAsync(async (req, res, next) => {
+    const { taskId } = req.params;
+    const { sectionId, order, completed } = req.body;
+
+    const task = await Task.findOneAndUpdate(
+        { $or: [{ clientId: taskId }, { _id: taskId }] },
+        { sectionId, order, completed },
+        { new: true }
+    );
+
+    if (!task) return next(new AppError('Task not found', 404));
+
+    res.status(200).json({ status: 'success', data: { task } });
+});
+
+// Batch Sync (For SyncManager)
 exports.syncBatch = catchAsync(async (req, res, next) => {
     const { tasks } = req.body;
-    
-    if (!tasks || tasks.length === 0) {
-        return res.status(200).json({ status: 'success', message: 'No tasks to sync' });
-    }
+    if (!tasks || tasks.length === 0) return res.status(200).json({ status: 'success' });
 
-    const bulkOperations = tasks.map(task => {
-        // Grab the ID from the frontend (whether they sent it as clientId or id)
-        const frontendId = task.clientId || task.id;
+    const operations = tasks.map(task => ({
+        updateOne: {
+            filter: { clientId: task.clientId },
+            update: { ...task, isDeleted: false }, // Ensure it's not deleted if syncing
+            upsert: true // Create if doesn't exist
+        }
+    }));
 
-        return {
-            updateOne: {
-                // ⚡ CHANGE 1: Search the database using 'clientId', not 'id'
-                filter: { clientId: frontendId }, 
-                
-                // ⚡ CHANGE 2: Explicitly map only the schema-approved fields
-                update: { $set: { 
-                    clientId: frontendId,
-                    content: task.content,
-                    completed: task.completed,
-                    workspaceId: task.workspaceId,
-                    user: req.user._id 
-                }}, 
-                
-                upsert: true 
-            }
-        };
-    });
-
-    // Execute all operations at once
-    const result = await Task.bulkWrite(bulkOperations);
-
-    res.status(200).json({ 
-        status: 'success', 
-        message: `Batch sync complete. Modified: ${result.modifiedCount}, Upserted: ${result.upsertedCount}` 
-    });
+    await Task.bulkWrite(operations);
+    res.status(200).json({ status: 'success', message: 'Batch synced' });
 });

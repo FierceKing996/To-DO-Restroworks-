@@ -2,13 +2,13 @@ const express = require('express');
 const router = express.Router();
 const taskController = require('../controller/taskcontroller');
 const { protect } = require('../middleware/authMiddleware'); 
-
 // Temporary 
 /*const mockAuth = (req, res, next) => {
     req.user = { userId: '65c1234567890abcdef12345' }; // Fake User ID for testing
     next();
 };*/
 router.post('/batch', protect, taskController.syncBatch);
+router.patch('/:taskId/move', taskController.moveTask);
 
 // Routes
 router.get('/', protect, taskController.getTasks);

@@ -1,107 +1,155 @@
+import { useState, useEffect } from 'react';
+import { FiMenu, FiChevronRight, FiChevronDown, FiPlus, FiLayout, FiBriefcase } from 'react-icons/fi';
+import { ProjectService } from '../services/projectService';
 import { useWorkspaces } from '../hooks/useWorkspaces';
-import { useEffect } from 'react';
-import { FiMenu, FiFolder, FiPlus, FiWifi, FiWifiOff } from 'react-icons/fi';
-export default function Sidebar({ 
-  isCollapsed, 
-  toggleSidebar, 
-  currentWorkspaceId, 
-  setCurrentWorkspace, 
-  openModal,
-  refreshTrigger 
-}: any) {
-  
-  const { workspaces } = useWorkspaces(refreshTrigger);
-  useEffect(() => {
-    if (workspaces.length > 0) {
-      const isValid = workspaces.some((ws: any) => ws.id === currentWorkspaceId);
-      
-      if (!isValid) {
-        setCurrentWorkspace({ id: workspaces[0].id, title: workspaces[0].title });
-      }
-    }
-  }, [workspaces, currentWorkspaceId, setCurrentWorkspace]);
 
-  return (
-    <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
-      <div className="sidebar-top">
-        <button onClick={toggleSidebar} className="icon-btn" style={{ 
-            background: 'none', border: 'none', color: '#fff', cursor: 'pointer',
-            display: 'flex', justifyContent: 'center', alignItems: 'center' 
-        }}>
-            <FiMenu size={24} />
-        </button>
-      </div>
-      
-      <nav className="sidebar-nav">
-        <div className="nav-label" style={{ padding: '10px 20px', fontSize: '0.75rem', color: '#888', letterSpacing: '1px' }}>
-          {!isCollapsed && 'WORKSPACES'}
-        </div>
-        <ul id="workspace-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {workspaces.map((ws: any) => (
-            <li 
-              key={ws.id}
-              className={`nav-item ${ws.id === currentWorkspaceId ? 'active' : ''}`}
-              onClick={() => setCurrentWorkspace({ id: ws.id, title: ws.title })}
-              style={{ 
-                padding: '10px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px',
-                backgroundColor: ws.id === currentWorkspaceId ? 'rgba(255,255,255,0.1)' : 'transparent'
-              }}
-            >
-              <span className="nav-icon" style={{ display: 'flex' }}><FiFolder size={18} /></span>
-              {!isCollapsed && <span className="nav-text">{ws.title}</span>}
-            </li>
-          ))}
-        </ul>
-      </nav>
+interface SidebarProps {
+    isCollapsed: boolean;
+    toggleSidebar: () => void;
+    currentWorkspaceId: string;
+    setCurrentWorkspace: (ws: { id: string; title: string }) => void;
+    currentProjectId: string | null;
+    onProjectSelect: (project: any) => void;
+    openModal: () => void;
+    refreshTrigger: number;
+}
 
-      {/* ⚡ THE UPGRADED BOTTOM SECTION */}
-      <div className="sidebar-footer-actions mt-auto" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}>
-        
-        {/* The New Workspace Button */}
-        <button 
-          onClick={openModal} 
-          title="Create New Workspace"
-          className="create-workspace-btn"
-          style={{
-            width: '100%',
-            height: '44px',
-            borderRadius: '8px',
-            border: '1px solid rgba(255, 255, 255, 0.03)',
-            backgroundColor: '#2a2b36', /* Sleek dark slate from your reference */
-            color: '#e2e8f0',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: isCollapsed ? 'center' : 'flex-start',
-            padding: isCollapsed ? '0' : '0 16px',
-            gap: '12px',
-            fontWeight: '500',
-            transition: 'background-color 0.2s ease',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#343542'}
-          onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#2a2b36'}
-        >
-          <span style={{ display: 'flex', opacity: 0.8 }}>
-            <FiPlus size={20} />
-          </span>
-          {!isCollapsed && <span>Create Workspace</span>}
-        </button>
+export default function Sidebar({
+    isCollapsed,
+    toggleSidebar,
+    currentWorkspaceId,
+    setCurrentWorkspace,
+    currentProjectId,
+    onProjectSelect,
+    openModal,
+    refreshTrigger
+}: SidebarProps) {
+    const { workspaces } = useWorkspaces(refreshTrigger);
+    const [expandedWorkspace, setExpandedWorkspace] = useState<string | null>(null);
+    const [projectsMap, setProjectsMap] = useState<Record<string, any[]>>({});
+    const [loadingProjects, setLoadingProjects] = useState<string | null>(null);
 
-        {/* The Connection Status */}
-        <div 
-          className="status-indicator" 
-          title="System Status"
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#aaa', fontSize: '0.8rem' }}
-        >
-          {navigator.onLine ? 
-            <FiWifi size={16} color="#10b981" /> : 
-            <FiWifiOff size={16} color="#ef4444" />
-          }
-          {!isCollapsed && <span>{navigator.onLine ? 'System Online' : 'Offline Mode'}</span>}
-        </div>
+    // Fetch projects when a workspace is expanded
+    const toggleWorkspace = async (wsId: string) => {
+        if (expandedWorkspace === wsId) {
+            setExpandedWorkspace(null);
+            return;
+        }
+        setExpandedWorkspace(wsId);
+        if (!projectsMap[wsId]) {
+            setLoadingProjects(wsId);
+            try {
+                const projs = await ProjectService.getProjects(wsId);
+                setProjectsMap(prev => ({ ...prev, [wsId]: projs }));
+            } catch (err) {
+                console.error(`Failed to load projects for ${wsId}`, err);
+            } finally {
+                setLoadingProjects(null);
+            }
+        }
+    };
 
-      </div>
-    </aside>
-  );
+    const handleCreateProject = async (wsId: string) => {
+        const title = prompt("Enter Project Name:");
+        if (!title) return;
+        try {
+            const newProj = await ProjectService.createProject(title, wsId);
+            setProjectsMap(prev => ({ ...prev, [wsId]: [...(prev[wsId] || []), newProj] }));
+            onProjectSelect(newProj);
+        } catch (err) { alert("Failed to create project"); }
+    };
+
+    return (
+        <aside className={`bg-white border-r border-gray-200 transition-all duration-300 flex flex-col h-screen flex-shrink-0 ${isCollapsed ? 'w-16' : 'w-64'}`}>
+            
+            {/* Header */}
+            <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
+                {!isCollapsed && (
+                    <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center text-white">
+                            <FiLayout size={14} />
+                        </div>
+                        <span className="font-bold text-gray-900 tracking-tight">AgencyOS</span>
+                    </div>
+                )}
+                <button onClick={toggleSidebar} className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-md transition-colors">
+                    <FiMenu size={20} />
+                </button>
+            </div>
+
+            {/* Workspaces List */}
+            <div className="flex-1 overflow-y-auto py-4 space-y-1">
+                {!isCollapsed && <div className="px-4 mb-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Workspaces</div>}
+                
+                {workspaces.map((ws: any) => (
+                    <div key={ws.id}>
+                        {/* Workspace Row */}
+                        <div 
+                            className={`group flex items-center px-3 py-2 mx-2 rounded-md cursor-pointer transition-colors ${
+                                currentWorkspaceId === ws.id ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                            onClick={() => {
+                                setCurrentWorkspace({ id: ws.id, title: ws.title });
+                                toggleWorkspace(ws.id);
+                            }}
+                        >
+                            {!isCollapsed && (
+                                <span className={`mr-2 transition-transform ${currentWorkspaceId === ws.id ? 'text-blue-500' : 'text-gray-400'}`}>
+                                    {expandedWorkspace === ws.id ? <FiChevronDown size={16} /> : <FiChevronRight size={16} />}
+                                </span>
+                            )}
+                            
+                            <div className={isCollapsed ? "mx-auto" : "mr-3"}>
+                                  <FiBriefcase size={18} />
+                            </div>
+                            
+                            {!isCollapsed && <span className="text-sm truncate flex-1">{ws.title}</span>}
+                        </div>
+
+                        {/* Nested Projects */}
+                        {!isCollapsed && expandedWorkspace === ws.id && (
+                            <div className="mt-1 space-y-1">
+                                {loadingProjects === ws.id && <div className="px-10 py-1 text-xs text-gray-400">Loading...</div>}
+                                
+                                {projectsMap[ws.id]?.map(proj => (
+                                    <div 
+                                        key={proj._id}
+                                        onClick={() => onProjectSelect(proj)}
+                                        className={`ml-6 pl-8 pr-3 py-1.5 flex items-center gap-2 text-sm cursor-pointer rounded-md transition-colors ${
+                                            currentProjectId === proj._id 
+                                                ? 'bg-blue-100 text-blue-700 font-medium' 
+                                                : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+                                        }`}
+                                    >
+                                        <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60"></span>
+                                        <span className="truncate">{proj.title}</span>
+                                    </div>
+                                ))}
+
+                                {/* Add Project Button */}
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); handleCreateProject(ws.id); }}
+                                    className="ml-6 pl-8 py-1.5 text-xs text-gray-400 hover:text-blue-600 flex items-center gap-2 w-full text-left transition-colors"
+                                >
+                                    <FiPlus size={14} /> New Project
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+
+             {/* Add Workspace Bottom Button */}
+             <div className="p-4 border-t border-gray-200">
+                <button 
+                    onClick={openModal}
+                    className={`flex items-center justify-center gap-2 py-2 w-full border rounded-md text-sm font-medium transition-colors ${
+                        isCollapsed ? 'border-transparent text-gray-400 hover:bg-gray-100 hover:text-gray-900' : 'border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50'
+                    }`}
+                >
+                    <FiPlus size={16} /> {!isCollapsed && "Add Workspace"}
+                </button>
+            </div>
+        </aside>
+    );
 }

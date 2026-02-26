@@ -17,6 +17,7 @@ const taskRoutes = require('./routes/taskRoute');
 const workspaceRoutes = require('./routes/workspaceRoutes');
 const passport = require('passport');
 const adminRoutes = require('./routes/adminRoutes');
+const projectRouter = require('./routes/projectRoutes');
 require('./config/passport');
 connectDB(); 
 
@@ -32,6 +33,9 @@ app.use(passport.initialize());
 
 app.use('/api/archives', protect, archiveRoutes);
 app.use('/api/admin', adminRoutes);
+
+app.use('/api/projects', projectRouter); 
+app.use('/api/tasks', protect, taskRoutes);
 // Auth Routes
 app.post('/api/auth/signup', authController.signup);
 app.post('/api/auth/login', authController.login);

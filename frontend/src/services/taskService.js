@@ -73,35 +73,49 @@ export const TaskService = {
     async addTask(taskData) {
         const newTask = {
             ...taskData,
-            id: crypto.randomUUID(), 
+            id: taskData.clientId, // Force ID to match
             synced: false,
             updatedAt: new Date().toISOString(),
             createdAt: new Date().toISOString(),
             isDeleted: false
-            // Note: taskData MUST contain workspaceId now
         };
 
+        // Save locally first for instant UI
         await IDB.put('tasks', newTask);
 
+        // Try Online Sync
         if (navigator.onLine) {
             try {
                 const response = await fetch(API_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json',
+                    headers: { 
+                        'Content-Type': 'application/json',
                         'Authorization': `Bearer ${AuthService.getToken()}`
-                     },
-                    body: JSON.stringify({ ...newTask, clientId: newTask.id }) 
+                    },
+                    body: JSON.stringify(newTask)
                 });
 
                 if (response.ok) {
-                    await IDB.put('tasks', { ...newTask, synced: true });
-                    return { ...newTask, synced: true };
+                    const responseData = await response.json();
+                    
+                    // ⚡ THE FIX: Get the REAL task from MongoDB (which includes the _id)
+                    const realServerTask = responseData.data.task; 
+
+                    // Overwrite the temporary local task with the real one
+                    await IDB.put('tasks', { 
+                        ...realServerTask, 
+                        id: realServerTask.clientId, 
+                        synced: true 
+                    });
+                    
+                    return realServerTask;
                 }
             } catch (err) {
                 console.warn('Offline: Task saved locally.');
             }
         }
 
+        // Offline? Queue it.
         await this.addToSyncQueue({ 
             id: newTask.id, 
             action: 'CREATE', 
@@ -111,67 +125,95 @@ export const TaskService = {
         return newTask;
     },
 
-    // 3. UPDATE TASK
-    async updateTask(task) {
-        const updatedTask = { 
-            ...task, 
-            synced: false, 
-            updatedAt: new Date().toISOString() 
-        };
+    // 3. DELETE TASK
+    async deleteTask(taskId) {
+        // 1. BULLETPROOF LOCAL DELETE: Find the exact task in the cache first
+        const allTasks = await IDB.getAll('tasks');
+        const localTask = allTasks.find(t => 
+            t.id === taskId || t._id === taskId || t.clientId === taskId
+        );
 
-        await IDB.put('tasks', updatedTask);
-
-        if (navigator.onLine) {
-            try {
-                const response = await fetch(`${API_URL}/${task.id}`, { 
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${AuthService.getToken()}`
-                     },
-                    body: JSON.stringify(updatedTask)
-                });
-                
-                if (response.ok) {
-                    await IDB.put('tasks', { ...updatedTask, synced: true });
-                    return;
-                }
-            } catch (err) { console.warn('Offline update'); }
+        if (localTask) {
+            // Tell IndexedDB to delete using the exact key it knows about
+            await IDB.delete('tasks', localTask.id);
+            console.log("Locally deleted task:", localTask.id);
         }
 
-        await this.addToSyncQueue({ 
-            id: task.id, 
-            action: 'UPDATE', 
-            payload: updatedTask 
-        });
+        // 2. Safety Check for temp tasks
+        if (taskId.toString().startsWith('temp-')) {
+            const queue = await IDB.getAll('syncQueue');
+            const queuedItem = queue.find(q => q.id === taskId);
+            if (queuedItem) await IDB.delete('syncQueue', queuedItem.id);
+            return; 
+        }
+
+        // 3. Server Delete
+        if (navigator.onLine) {
+            try {
+                await fetch(`${API_URL}/${taskId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${AuthService.getToken()}` }
+                });
+                console.log("Server deleted task:", taskId);
+            } catch (err) {
+                console.error("Server delete failed, but local is gone.", err);
+            }
+        } else {
+            await SyncManager.addToQueue({
+                type: 'DELETE_TASK',
+                payload: { taskId }
+            });
+        }
+    },
+
+    // 4. UPDATE TASK
+    async updateTask(taskId, updates) {
+        // A. Local Update
+        const tasks = await IDB.getAll('tasks');
+        // Find by either ID type to be safe
+        const task = tasks.find(t => t.id === taskId || t._id === taskId || t.clientId === taskId);
+        
+        if (task) {
+            await IDB.put('tasks', { ...task, ...updates });
+        }
+
+        // B. If it's still a temp task, don't hit the server yet
+        if (taskId.toString().startsWith('temp-')) return;
+
+        // C. Server Update - Use the taskId directly in the URL
+        if (navigator.onLine) {
+            await fetch(`${API_URL}/${taskId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${AuthService.getToken()}`
+                },
+                body: JSON.stringify(updates)
+            });
+        } else {
+            await SyncManager.addToQueue({
+                type: 'UPDATE_TASK',
+                payload: { taskId, updates }
+            });
+        }
     },
 
     
 
-    // 4. DELETE TASK
-    async deleteTask(taskId) {
-        const task = await IDB.get('tasks', taskId);
-        if (!task) return;
+    async moveTask(taskId, sectionId, order, completed) {
+        // 1. Optimistic UI update (update Local DB immediately)
+        // ... (You can add IDB logic here if you want offline support for moving)
 
-        const updatedTask = { ...task, isDeleted: true, synced: false, updatedAt: new Date().toISOString() };
-        await IDB.put('tasks', updatedTask);
-
-        if (navigator.onLine) {
-            try {
-                await fetch(`${API_URL}/${taskId}`, { method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${AuthService.getToken()}`
-                     }
-                 });
-                await IDB.put('tasks', { ...updatedTask, synced: true });
-                return;
-            } catch (e) { console.warn('Offline delete'); }
-        }
-
-        await this.addToSyncQueue({ 
-            id: taskId, 
-            action: 'DELETE',
-            payload: { id: taskId }
+        // 2. Send to Server
+        const res = await fetch(`${API_URL}/${taskId}/move`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${AuthService.getToken()}`
+            },
+            body: JSON.stringify({ sectionId, order, completed })
         });
+        return await res.json();
     },
 
     // HELPER: SMART QUEUE

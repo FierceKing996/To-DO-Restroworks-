@@ -2,6 +2,7 @@ const Task = require('../model/tasks');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/AppError');
 const mongoose = require('mongoose');
+const { sendTaskNotification } = require('../service/sqsService');
 exports.getTasks = catchAsync(async (req, res, next) => {
     // Return all tasks (we filter by project on frontend for now)
     const tasks = await Task.find({ isDeleted: false });
@@ -12,7 +13,7 @@ exports.createTask = catchAsync(async (req, res, next) => {
     // 1. Log the body to verify data is coming in
     console.log("Creating Task Payload:", req.body);
 
-    const { content, clientId, priority, sectionId, projectId, workspaceId } = req.body;
+    const { content, clientId, priority, sectionId, projectId, workspaceId ,labels} = req.body;
 
     // 2. Validate essential fields
     if (!content || !workspaceId || !projectId) {
@@ -26,6 +27,7 @@ exports.createTask = catchAsync(async (req, res, next) => {
         sectionId: sectionId || 'todo',
         projectId, 
         workspaceId,
+        labels: labels || [],
         userId: req.user ? req.user._id : null,
         isDeleted: false // Explicitly set false
     });

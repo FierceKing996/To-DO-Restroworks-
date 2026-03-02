@@ -14,7 +14,7 @@ const taskSchema = new mongoose.Schema({
     
     // We keep this for your Analytics Dashboard!
     completed: { type: Boolean, default: false },
-    
+    labels: [String],
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     isDeleted: { type: Boolean, default: false },
 }, { timestamps: true });

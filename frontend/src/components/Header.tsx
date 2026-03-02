@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { FiSearch, FiBell, FiLogOut, FiUser, FiChevronDown } from 'react-icons/fi';
 import { AuthService } from '../services/authService';
-
+import ProfileModal from './ProfileModal';
 interface HeaderProps {
   username: string;
   searchQuery: string;
@@ -10,7 +10,7 @@ interface HeaderProps {
 
 export default function Header({ username, searchQuery, setSearchQuery }: HeaderProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const handleLogout = () => {
     AuthService.logout();
     window.location.reload(); // Force refresh to clear state and go to login
@@ -61,29 +61,41 @@ export default function Header({ username, searchQuery, setSearchQuery }: Header
 
           {/* Dropdown Menu */}
           {isDropdownOpen && (
-            <>
-              {/* Click outside closer */}
-              <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)}></div>
-              
-              <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-20 py-1 animate-in fade-in slide-in-from-top-2 duration-200">
-                <div className="px-4 py-2 border-b border-gray-100">
-                  <p className="text-xs text-gray-500">Signed in as</p>
-                  <p className="text-sm font-bold text-gray-800 truncate">{username}</p>
-                </div>
-                
-                <button className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-blue-600 flex items-center gap-2 transition-colors">
-                    <FiUser size={14} /> Profile
-                </button>
-                
-                <button 
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
-                >
-                    <FiLogOut size={14} /> Log Out
-                </button>
-              </div>
-            </>
-          )}
+                <>
+                    {/* Click outside closer */}
+                    <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)}></div>
+                    
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-20 py-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="px-4 py-2 border-b border-gray-100">
+                            <p className="text-xs text-gray-500">Signed in as</p>
+                            <p className="text-sm font-bold text-gray-800 truncate">{username}</p>
+                        </div>
+                        
+                        {/* ⚡ EXACTLY ONE PROFILE BUTTON */}
+                        <button 
+                            onClick={() => {
+                                setIsDropdownOpen(false); // Close the dropdown
+                                setIsProfileModalOpen(true); // Open the modal
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-blue-600 flex items-center gap-2 transition-colors"
+                        >
+                            <div className="text-gray-500"><FiUser size={14} /></div> Profile
+                        </button>
+                        
+                        <button 
+                            onClick={handleLogout}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
+                        >
+                            <div className="text-red-500"><FiLogOut size={14} /></div> Log Out
+                        </button>
+                    </div>
+                </>
+            )}
+            <ProfileModal 
+                isOpen={isProfileModalOpen} 
+                onClose={() => setIsProfileModalOpen(false)} 
+                username={username} 
+            />
         </div>
       </div>
     </header>

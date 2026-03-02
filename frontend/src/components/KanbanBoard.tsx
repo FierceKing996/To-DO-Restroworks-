@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
-import { FiMoreHorizontal, FiEdit2, FiTrash2, FiCheck, FiX, FiCloudOff } from 'react-icons/fi';
+import { FiMoreHorizontal, FiEdit2, FiTrash2, FiCheck, FiX, FiCloudOff,FiTag } from 'react-icons/fi';
 import { ProjectService } from '../services/projectService';
 import { TaskService } from '../services/taskService';
 
@@ -96,6 +96,31 @@ export default function KanbanBoard({ project, tasks, onTaskMove, onTaskCreate, 
             if(onTaskUpdate) onTaskUpdate();
         } catch (e) {
             alert("Failed to update task");
+        }
+    };
+
+    const handleAddLabel = async (taskId: string, currentLabels: string[] = []) => {
+        const newLabel = prompt("Enter new label name (e.g., Frontend, Bug):");
+        if (!newLabel || !newLabel.trim()) return;
+        
+        // Prevent duplicate labels on the same task
+        const updatedLabels = [...new Set([...currentLabels, newLabel.trim()])];
+
+        try {
+            // Optimistic UI Update
+            const updatedTasks = [...localTasks];
+            const taskIndex = updatedTasks.findIndex(t => (t._id || t.clientId || t.id) === taskId);
+            if (taskIndex > -1) {
+                updatedTasks[taskIndex].labels = updatedLabels;
+                setLocalTasks(updatedTasks);
+            }
+
+            // Server Sync
+            await TaskService.updateTask(taskId, { labels: updatedLabels });
+            setOpenMenuId(null);
+            if(onTaskUpdate) onTaskUpdate();
+        } catch (e) {
+            alert("Failed to add label");
         }
     };
 
@@ -226,6 +251,9 @@ export default function KanbanBoard({ project, tasks, onTaskMove, onTaskCreate, 
                                                                                     <button onClick={(e) => { e.stopPropagation(); startEditing(activeTaskId, task.content); }} className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2">
                                                                                         <FiEdit2 size={12} /> Edit
                                                                                     </button>
+                                                                                    <button onClick={(e) => { e.stopPropagation(); handleAddLabel(activeTaskId, task.labels); }} className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center gap-2">
+                                                                                         <FiTag size={12} /> Add Label
+                                                                                    </button>
                                                                                     <button onClick={(e) => { e.stopPropagation(); handleDeleteTask(activeTaskId); }} className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2">
                                                                                         <FiTrash2 size={12} /> Delete
                                                                                     </button>
@@ -249,6 +277,15 @@ export default function KanbanBoard({ project, tasks, onTaskMove, onTaskCreate, 
                                                                     </div>
                                                                 ) : (
                                                                     <p className="text-sm text-gray-800 leading-relaxed break-words">{task.content}</p>
+                                                                )}
+                                                                {task.labels && task.labels.length > 0 && (
+                                                                    <div className="flex flex-wrap gap-1 mt-3">
+                                                                           {task.labels.map((label: string) => (
+                                                                                    <span key={label} className="bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide">
+                                                                                          {label}
+                                                                                    </span>
+                                                                             ))}
+                                                                     </div>
                                                                 )}
                                                             </div>
                                                         )}

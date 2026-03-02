@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiMenu, FiChevronRight, FiChevronDown, FiPlus, FiLayout, FiBriefcase } from 'react-icons/fi';
+import { FiMenu, FiChevronRight, FiChevronDown, FiPlus, FiLayout,FiTag, FiBriefcase } from 'react-icons/fi';
 import { ProjectService } from '../services/projectService';
 import { useWorkspaces } from '../hooks/useWorkspaces';
 
@@ -12,6 +12,7 @@ interface SidebarProps {
     onProjectSelect: (project: any) => void;
     openModal: () => void;
     refreshTrigger: number;
+    labels?: string[];
 }
 
 export default function Sidebar({
@@ -22,7 +23,8 @@ export default function Sidebar({
     currentProjectId,
     onProjectSelect,
     openModal,
-    refreshTrigger
+    refreshTrigger,
+    labels = []
 }: SidebarProps) {
     const { workspaces } = useWorkspaces(refreshTrigger);
     const [expandedWorkspace, setExpandedWorkspace] = useState<string | null>(null);
@@ -69,14 +71,31 @@ export default function Sidebar({
                         <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center text-white">
                             <FiLayout size={14} />
                         </div>
-                        <span className="font-bold text-gray-900 tracking-tight">AgencyOS</span>
+                        <span className="font-bold text-gray-900 tracking-tight">YOUR TO-DO</span>
                     </div>
                 )}
                 <button onClick={toggleSidebar} className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-md transition-colors">
                     <FiMenu size={20} />
                 </button>
             </div>
-
+            {!isCollapsed && (
+                    <div className="mt-6 mb-2">
+                        <div className="px-4 mb-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Labels</div>
+                        <div className="space-y-1">
+                            {labels.map(label => (
+                                <div key={label} className="group flex items-center px-3 py-1.5 mx-2 rounded-md cursor-pointer text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">
+                                    <div className="mr-3 text-gray-400 group-hover:text-indigo-500 transition-colors">
+                                        <FiTag size={14} />
+                                    </div>
+                                    <span className="text-sm truncate flex-1">{label}</span>
+                                </div>
+                            ))}
+                            {labels.length === 0 && (
+                                <div className="px-5 py-2 text-xs text-gray-400 italic">No labels used yet</div>
+                            )}
+                        </div>
+                    </div>
+                )}
             {/* Workspaces List */}
             <div className="flex-1 overflow-y-auto py-4 space-y-1">
                 {!isCollapsed && <div className="px-4 mb-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Workspaces</div>}

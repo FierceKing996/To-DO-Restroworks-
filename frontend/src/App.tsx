@@ -173,6 +173,8 @@ function App() {
   const filteredTasks = tasks.filter(task => 
       task.content.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const allLabels = Array.from(new Set(tasks.flatMap(task => task.labels || [])));
   // --- MAIN RENDER ---
   return (
     // 1. Change app-container to have a white background and full height
@@ -187,6 +189,7 @@ function App() {
         refreshTrigger={sidebarRefreshTrigger}
         currentProjectId={currentProject?._id}
         onProjectSelect={setCurrentProject}
+        labels={allLabels}
       />
 
       {/* 2. Change dashboard to have a light gray background (bg-gray-50) */}
